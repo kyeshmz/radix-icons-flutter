@@ -1,0 +1,17 @@
+{
+	"name": "auto_build",
+	"version": "1.0.0",
+	"description": "",
+	"scripts": {
+		"minify": "svgo -f ./radixicons/packages/radix-icons/icons -o ./minified",
+		"fix": "oslllo-svg-fixer -s ./minified -d ./fixed"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"oslllo-svg-fixer": "^2.1.2",
+		"svgo": "^2.8.0"
+	},
+	"devDependencies": {}
+}

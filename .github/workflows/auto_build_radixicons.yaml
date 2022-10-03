@@ -1,0 +1,176 @@
+name: Auto build Unicons
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16.14.0"
+
+      - name: Configure SSH key
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "Kye Shimizu"
+          git config --global user.email "kyeshimizu@gmail.com"
+      - name: Configure auto_build
+        run: |
+          cd auto_build
+          npm install
+          npm install -g fontello-cli
+      - name: Obtain all SVG files from Unicons
+        run: |
+          cd auto_build
+          cd scripts
+          sh get_icons_svg.sh && sh rename_icons.sh
+      - name: Generate config files for each style
+        run: |
+          cd auto_build
+          npm run generate_configs
+      - name: Workaround to make fontello-cli work properly
+        if: always()
+        run: |
+          cd auto_build
+          cd output
+          set +e
+          npx fontello-cli --config unicons_line_config.json --host https://www.fluttericon.com/ install
+          rm .fontello-session
+          set -e
+      - name: Generate ttf font and Dart class for UniconsLine
+        if: always()
+        run: |
+          cd auto_build
+          cd output
+          set +e
+          npx fontello-cli --config unicons_line_config.json --host https://www.fluttericon.com/ install
+          rm .fontello-session
+          set -e
+      - name: Generate ttf font and Dart class for UniconsSolid
+        if: always()
+        run: |
+          cd auto_build
+          cd output
+          set +e
+          npx fontello-cli --config unicons_solid_config.json --host https://www.fluttericon.com/ install
+          rm .fontello-session
+          set -e
+      - name: Generate ttf font and Dart class for UniconsThinline
+        if: always()
+        run: |
+          cd auto_build
+          cd output
+          set +e
+          npx fontello-cli --config unicons_thinline_config.json --host https://www.fluttericon.com/ install
+          rm .fontello-session
+          set -e
+      - name: Rename all folders to the respective style
+        run: |
+          cd auto_build
+          npm run rename_outputs
+      - name: Move line icons ttf file
+        run: |
+          pwd
+          ls
+          cd auto_build
+          cd output
+          cd unicons_line_icons
+          cd fonts
+          mv *.ttf /home/runner/work/unicons-flutter/unicons-flutter/icons/
+      - name: Move line icons Dart file
+        run: |
+          cd auto_build
+          cd output
+          cd unicons_line_icons
+          mv *.dart unicons_line.dart
+          mv *.dart /home/runner/work/unicons-flutter/unicons-flutter/lib/src/
+      - name: Move line icons config file
+        run: |
+          cd auto_build
+          cd output
+          cd unicons_line_icons
+          mv *.json unicons_line_config.json
+          mv *.json /home/runner/work/unicons-flutter/unicons-flutter/config/
+      - name: Move solid icons ttf file
+        run: |
+          cd auto_build
+          cd output
+          cd unicons_solid_icons
+          cd fonts
+          mv *.ttf /home/runner/work/unicons-flutter/unicons-flutter/icons/
+      - name: Move solid icons Dart file
+        run: |
+          cd auto_build
+          cd output
+          cd unicons_solid_icons
+          mv *.dart unicons_solid.dart
+          mv *.dart /home/runner/work/unicons-flutter/unicons-flutter/lib/src/
+      - name: Move solid icons config file
+        run: |
+          cd auto_build
+          cd output
+          cd unicons_solid_icons
+          mv *.json unicons_solid_config.json
+          mv *.json /home/runner/work/unicons-flutter/unicons-flutter/config/
+      - name: Move thinline icons ttf file
+        run: |
+          cd auto_build
+          cd output
+          cd unicons_thinline_icons
+          cd fonts
+          mv *.ttf /home/runner/work/unicons-flutter/unicons-flutter/icons/
+      - name: Move thinline icons Dart file
+        run: |
+          cd auto_build
+          cd output
+          cd unicons_thinline_icons
+          mv *.dart unicons_thinline.dart
+          mv *.dart /home/runner/work/unicons-flutter/unicons-flutter/lib/src/
+      - name: Move thinline icons config file
+        run: |
+          cd auto_build
+          cd output
+          cd unicons_thinline_icons
+          mv *.json unicons_thinline_config.json
+          mv *.json /home/runner/work/unicons-flutter/unicons-flutter/config/
+      - name: Adjusted generated Dart files
+        run: |
+          cd auto_build
+          npm run adjust_generated_dart_files
+      - name: Update pubspec.yaml
+        run: |
+          cd auto_build
+          npm run update_pubspec
+      - name: Update CHANGELOG.md
+        run: |
+          cd auto_build
+          npm run update_changelog
+      - name: Create branch with updated icons
+        run: |
+          git checkout -b build_${{ github.run_id }}
+          cd lib
+          git add .
+          cd ..
+          cd icons
+          git add .
+          cd ..
+          cd config
+          git add .
+          cd ..
+          git add pubspec.yaml
+          git add CHANGELOG.md
+          git commit -m "ci/cd: generated icons [${{ github.run_id }}]"
+          git push origin build_${{ github.run_id }}
